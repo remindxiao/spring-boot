@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2014 the original author or authors.
+ * Copyright 2012-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,6 @@ import org.springframework.core.env.PropertySources;
  * Convenience class for manipulating PropertySources.
  *
  * @author Dave Syer
- *
  * @see PropertySource
  * @see PropertySources
  */
@@ -51,7 +50,7 @@ public abstract class PropertySourceUtils {
 	 * Return a Map of all values from the specified {@link PropertySources} that start
 	 * with a particular key.
 	 * @param propertySources the property sources to scan
-	 * @param rootPrefix a root prefix to be prepended to the keyPrefex (can be
+	 * @param rootPrefix a root prefix to be prepended to the keyPrefix (can be
 	 * {@code null})
 	 * @param keyPrefix the key prefixes to test
 	 * @return a map of all sub properties starting with the specified key prefixes.
@@ -60,7 +59,7 @@ public abstract class PropertySourceUtils {
 	public static Map<String, Object> getSubProperties(PropertySources propertySources,
 			String rootPrefix, String keyPrefix) {
 		RelaxedNames keyPrefixes = new RelaxedNames(keyPrefix);
-		Map<String, Object> subProperties = new LinkedHashMap<String, Object>();
+		Map<String, Object> subProperties = new LinkedHashMap<>();
 		for (PropertySource<?> source : propertySources) {
 			if (source instanceof EnumerablePropertySource) {
 				for (String name : ((EnumerablePropertySource<?>) source)

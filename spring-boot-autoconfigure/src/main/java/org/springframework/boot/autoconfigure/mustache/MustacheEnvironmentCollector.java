@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2015 the original author or authors.
+ * Copyright 2012-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,10 @@ package org.springframework.boot.autoconfigure.mustache;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.samskivert.mustache.DefaultCollector;
+import com.samskivert.mustache.Mustache.Collector;
+import com.samskivert.mustache.Mustache.VariableFetcher;
+
 import org.springframework.boot.bind.PropertySourcesPropertyValues;
 import org.springframework.boot.bind.RelaxedDataBinder;
 import org.springframework.boot.bind.RelaxedPropertyResolver;
@@ -26,18 +30,14 @@ import org.springframework.context.EnvironmentAware;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.Environment;
 
-import com.samskivert.mustache.DefaultCollector;
-import com.samskivert.mustache.Mustache.Collector;
-import com.samskivert.mustache.Mustache.VariableFetcher;
-
 /**
  * Mustache {@link Collector} to expose properties from the Spring {@link Environment}.
  *
  * @author Dave Syer
  * @since 1.2.2
  */
-public class MustacheEnvironmentCollector extends DefaultCollector implements
-		EnvironmentAware {
+public class MustacheEnvironmentCollector extends DefaultCollector
+		implements EnvironmentAware {
 
 	private ConfigurableEnvironment environment;
 
@@ -50,9 +50,9 @@ public class MustacheEnvironmentCollector extends DefaultCollector implements
 	@Override
 	public void setEnvironment(Environment environment) {
 		this.environment = (ConfigurableEnvironment) environment;
-		this.target = new HashMap<String, Object>();
-		new RelaxedDataBinder(this.target).bind(new PropertySourcesPropertyValues(
-				this.environment.getPropertySources()));
+		this.target = new HashMap<>();
+		new RelaxedDataBinder(this.target).bind(
+				new PropertySourcesPropertyValues(this.environment.getPropertySources()));
 		this.propertyResolver = new RelaxedPropertyResolver(environment);
 	}
 

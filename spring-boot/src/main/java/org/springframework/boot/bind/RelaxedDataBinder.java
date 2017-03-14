@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2015 the original author or authors.
+ * Copyright 2012-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 
 import org.springframework.beans.BeanWrapper;
@@ -63,7 +64,7 @@ public class RelaxedDataBinder extends DataBinder {
 
 	private boolean ignoreNestedProperties;
 
-	private MultiValueMap<String, String> nameAliases = new LinkedMultiValueMap<String, String>();
+	private MultiValueMap<String, String> nameAliases = new LinkedMultiValueMap<>();
 
 	/**
 	 * Create a new {@link RelaxedDataBinder} instance.
@@ -79,8 +80,8 @@ public class RelaxedDataBinder extends DataBinder {
 	 * @param namePrefix An optional prefix to be used when reading properties
 	 */
 	public RelaxedDataBinder(Object target, String namePrefix) {
-		super(wrapTarget(target), (StringUtils.hasLength(namePrefix) ? namePrefix
-				: DEFAULT_OBJECT_NAME));
+		super(wrapTarget(target),
+				(StringUtils.hasLength(namePrefix) ? namePrefix : DEFAULT_OBJECT_NAME));
 		this.namePrefix = cleanNamePrefix(namePrefix);
 	}
 
@@ -106,7 +107,7 @@ public class RelaxedDataBinder extends DataBinder {
 	 * @param aliases a map of property name to aliases
 	 */
 	public void setNameAliases(Map<String, List<String>> aliases) {
-		this.nameAliases = new LinkedMultiValueMap<String, String>(aliases);
+		this.nameAliases = new LinkedMultiValueMap<>(aliases);
 	}
 
 	/**
@@ -143,10 +144,11 @@ public class RelaxedDataBinder extends DataBinder {
 			propertyValues = addMapPrefix(propertyValues);
 		}
 		BeanWrapper wrapper = new BeanWrapperImpl(target);
-		wrapper.setConversionService(new RelaxedConversionService(getConversionService()));
+		wrapper.setConversionService(
+				new RelaxedConversionService(getConversionService()));
 		wrapper.setAutoGrowNestedPaths(true);
-		List<PropertyValue> sortedValues = new ArrayList<PropertyValue>();
-		Set<String> modifiedNames = new HashSet<String>();
+		List<PropertyValue> sortedValues = new ArrayList<>();
+		Set<String> modifiedNames = new HashSet<>();
 		List<String> sortedNames = getSortedPropertyNames(propertyValues);
 		for (String name : sortedNames) {
 			PropertyValue propertyValue = propertyValues.getPropertyValue(name);
@@ -159,7 +161,7 @@ public class RelaxedDataBinder extends DataBinder {
 	}
 
 	private List<String> getSortedPropertyNames(MutablePropertyValues propertyValues) {
-		List<String> names = new LinkedList<String>();
+		List<String> names = new LinkedList<>();
 		for (PropertyValue propertyValue : propertyValues.getPropertyValueList()) {
 			names.add(propertyValue.getName());
 		}
@@ -176,7 +178,7 @@ public class RelaxedDataBinder extends DataBinder {
 	 * @param names the names to sort
 	 */
 	private void sortPropertyNames(List<String> names) {
-		for (String name : new ArrayList<String>(names)) {
+		for (String name : new ArrayList<>(names)) {
 			int propertyIndex = names.indexOf(name);
 			BeanPath path = new BeanPath(name);
 			for (String prefix : path.prefixes()) {
@@ -206,14 +208,18 @@ public class RelaxedDataBinder extends DataBinder {
 		MutablePropertyValues rtn = new MutablePropertyValues();
 		for (PropertyValue value : propertyValues.getPropertyValues()) {
 			String name = value.getName();
-			for (String candidate : new RelaxedNames(this.namePrefix)) {
-				if (name.startsWith(candidate)) {
-					name = name.substring(candidate.length());
-					if (!(this.ignoreNestedProperties && name.contains("."))) {
-						PropertyOrigin propertyOrigin = OriginCapablePropertyValue
-								.getOrigin(value);
-						rtn.addPropertyValue(new OriginCapablePropertyValue(name, value
-								.getValue(), propertyOrigin));
+			for (String prefix : new RelaxedNames(stripLastDot(this.namePrefix))) {
+				for (String separator : new String[] { ".", "_" }) {
+					String candidate = (StringUtils.hasLength(prefix) ? prefix + separator
+							: prefix);
+					if (name.startsWith(candidate)) {
+						name = name.substring(candidate.length());
+						if (!(this.ignoreNestedProperties && name.contains("."))) {
+							PropertyOrigin propertyOrigin = OriginCapablePropertyValue
+									.getOrigin(value);
+							rtn.addPropertyValue(new OriginCapablePropertyValue(name,
+									value.getValue(), propertyOrigin));
+						}
 					}
 				}
 			}
@@ -221,7 +227,15 @@ public class RelaxedDataBinder extends DataBinder {
 		return rtn;
 	}
 
-	private PropertyValue modifyProperty(BeanWrapper target, PropertyValue propertyValue) {
+	private String stripLastDot(String string) {
+		if (StringUtils.hasLength(string) && string.endsWith(".")) {
+			string = string.substring(0, string.length() - 1);
+		}
+		return string;
+	}
+
+	private PropertyValue modifyProperty(BeanWrapper target,
+			PropertyValue propertyValue) {
 		String name = propertyValue.getName();
 		String normalizedName = normalizePath(target, name);
 		if (!normalizedName.equals(name)) {
@@ -262,7 +276,6 @@ public class RelaxedDataBinder extends DataBinder {
 		if (path.name(++index) == null) {
 			return path.toString();
 		}
-
 		String name = path.prefix(index);
 		TypeDescriptor descriptor = wrapper.getPropertyTypeDescriptor(name);
 		if (descriptor == null || descriptor.isMap()) {
@@ -298,14 +311,19 @@ public class RelaxedDataBinder extends DataBinder {
 		if (descriptor == null || descriptor.getMapValueTypeDescriptor() == null) {
 			return false;
 		}
+		if (Properties.class.isAssignableFrom(descriptor.getObjectType())) {
+			// Properties is declared as Map<Object,Object> but we know it's really
+			// Map<String,String>
+			return true;
+		}
 		Class<?> valueType = descriptor.getMapValueTypeDescriptor().getObjectType();
 		return (valueType != null && CharSequence.class.isAssignableFrom(valueType));
 	}
 
 	@SuppressWarnings("rawtypes")
 	private boolean isBlanked(BeanWrapper wrapper, String propertyName, String key) {
-		Object value = (wrapper.isReadableProperty(propertyName) ? wrapper
-				.getPropertyValue(propertyName) : null);
+		Object value = (wrapper.isReadableProperty(propertyName)
+				? wrapper.getPropertyValue(propertyName) : null);
 		if (value instanceof Map) {
 			if (((Map) value).get(key) == BLANK) {
 				return true;
@@ -314,7 +332,8 @@ public class RelaxedDataBinder extends DataBinder {
 		return false;
 	}
 
-	private void extendCollectionIfNecessary(BeanWrapper wrapper, BeanPath path, int index) {
+	private void extendCollectionIfNecessary(BeanWrapper wrapper, BeanPath path,
+			int index) {
 		String name = path.prefix(index);
 		TypeDescriptor elementDescriptor = wrapper.getPropertyTypeDescriptor(name)
 				.getElementTypeDescriptor();
@@ -323,8 +342,8 @@ public class RelaxedDataBinder extends DataBinder {
 			return;
 		}
 		Object extend = new LinkedHashMap<String, Object>();
-		if (!elementDescriptor.isMap() && path.isArrayIndex(index + 1)) {
-			extend = new ArrayList<Object>();
+		if (!elementDescriptor.isMap() && path.isArrayIndex(index)) {
+			extend = new ArrayList<>();
 		}
 		wrapper.setPropertyValue(path.prefix(index + 1), extend);
 	}
@@ -353,7 +372,7 @@ public class RelaxedDataBinder extends DataBinder {
 		}
 		Object extend = new LinkedHashMap<String, Object>();
 		if (descriptor.isCollection()) {
-			extend = new ArrayList<Object>();
+			extend = new ArrayList<>();
 		}
 		if (descriptor.getType().equals(Object.class) && path.isLastNode(index)) {
 			extend = BLANK;
@@ -419,7 +438,7 @@ public class RelaxedDataBinder extends DataBinder {
 		if (aliases == null) {
 			return Collections.singleton(name);
 		}
-		List<String> nameAndAliases = new ArrayList<String>(aliases.size() + 1);
+		List<String> nameAndAliases = new ArrayList<>(aliases.size() + 1);
 		nameAndAliases.add(name);
 		nameAndAliases.addAll(aliases);
 		return nameAndAliases;
@@ -467,7 +486,7 @@ public class RelaxedDataBinder extends DataBinder {
 		}
 
 		public List<String> prefixes() {
-			List<String> prefixes = new ArrayList<String>();
+			List<String> prefixes = new ArrayList<>();
 			for (int index = 1; index < this.nodes.size(); index++) {
 				prefixes.add(prefix(index));
 			}
@@ -479,7 +498,7 @@ public class RelaxedDataBinder extends DataBinder {
 		}
 
 		private List<PathNode> splitPath(String path) {
-			List<PathNode> nodes = new ArrayList<PathNode>();
+			List<PathNode> nodes = new ArrayList<>();
 			String current = extractIndexedPaths(path, nodes);
 			for (String name : StringUtils.delimitedListToStringArray(current, ".")) {
 				if (StringUtils.hasText(name)) {
@@ -513,7 +532,7 @@ public class RelaxedDataBinder extends DataBinder {
 		}
 
 		public void collapseKeys(int index) {
-			List<PathNode> revised = new ArrayList<PathNode>();
+			List<PathNode> revised = new ArrayList<>();
 			for (int i = 0; i < index; i++) {
 				revised.add(this.nodes.get(i));
 			}
@@ -609,6 +628,7 @@ public class RelaxedDataBinder extends DataBinder {
 			public String toString() {
 				return "[" + this.name + "]";
 			}
+
 		}
 
 		private static class PropertyNode extends PathNode {
@@ -625,6 +645,7 @@ public class RelaxedDataBinder extends DataBinder {
 			public String toString() {
 				return "." + this.name;
 			}
+
 		}
 
 	}
@@ -632,8 +653,8 @@ public class RelaxedDataBinder extends DataBinder {
 	/**
 	 * Extended version of {@link BeanPropertyBindingResult} to support relaxed binding.
 	 */
-	private static class RelaxedBeanPropertyBindingResult extends
-			BeanPropertyBindingResult {
+	private static class RelaxedBeanPropertyBindingResult
+			extends BeanPropertyBindingResult {
 
 		private RelaxedConversionService conversionService;
 
@@ -660,8 +681,9 @@ public class RelaxedDataBinder extends DataBinder {
 	private static class RelaxedBeanWrapper extends BeanWrapperImpl {
 
 		private static final Set<String> BENIGN_PROPERTY_SOURCE_NAMES;
+
 		static {
-			Set<String> names = new HashSet<String>();
+			Set<String> names = new HashSet<>();
 			names.add(StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME);
 			names.add(StandardEnvironment.SYSTEM_PROPERTIES_PROPERTY_SOURCE_NAME);
 			BENIGN_PROPERTY_SOURCE_NAMES = Collections.unmodifiableSet(names);

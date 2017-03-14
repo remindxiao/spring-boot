@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2015 the original author or authors.
+ * Copyright 2012-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.http.client.utils.URIBuilder;
+
 import org.springframework.util.StringUtils;
 
 /**
@@ -72,7 +73,7 @@ class ProjectGenerationRequest {
 
 	private String bootVersion;
 
-	private List<String> dependencies = new ArrayList<String>();
+	private List<String> dependencies = new ArrayList<>();
 
 	/**
 	 * The URL of the service to use.
@@ -367,14 +368,13 @@ class ProjectGenerationRequest {
 		if (this.type != null) {
 			ProjectType result = metadata.getProjectTypes().get(this.type);
 			if (result == null) {
-				throw new ReportableException(
-						("No project type with id '" + this.type + "' - check the service capabilities (--list)"));
+				throw new ReportableException(("No project type with id '" + this.type
+						+ "' - check the service capabilities (--list)"));
 			}
 			return result;
 		}
 		else if (isDetectType()) {
-			Map<String, ProjectType> types = new HashMap<String, ProjectType>(
-					metadata.getProjectTypes());
+			Map<String, ProjectType> types = new HashMap<>(metadata.getProjectTypes());
 			if (this.build != null) {
 				filter(types, "build", this.build);
 			}
@@ -384,7 +384,7 @@ class ProjectGenerationRequest {
 			if (types.size() == 1) {
 				return types.values().iterator().next();
 			}
-			else if (types.size() == 0) {
+			else if (types.isEmpty()) {
 				throw new ReportableException("No type found with build '" + this.build
 						+ "' and format '" + this.format
 						+ "' check the service capabilities (--list)");
@@ -423,8 +423,8 @@ class ProjectGenerationRequest {
 
 	private static void filter(Map<String, ProjectType> projects, String tag,
 			String tagValue) {
-		for (Iterator<Map.Entry<String, ProjectType>> it = projects.entrySet().iterator(); it
-				.hasNext();) {
+		for (Iterator<Map.Entry<String, ProjectType>> it = projects.entrySet()
+				.iterator(); it.hasNext();) {
 			Map.Entry<String, ProjectType> entry = it.next();
 			String value = entry.getValue().getTags().get(tag);
 			if (!tagValue.equals(value)) {

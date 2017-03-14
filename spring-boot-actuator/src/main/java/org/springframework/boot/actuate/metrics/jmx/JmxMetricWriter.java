@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2015 the original author or authors.
+ * Copyright 2012-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import javax.management.ObjectName;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
 import org.springframework.boot.actuate.metrics.Metric;
 import org.springframework.boot.actuate.metrics.writer.Delta;
 import org.springframework.boot.actuate.metrics.writer.MetricWriter;
@@ -47,9 +48,9 @@ import org.springframework.jmx.export.naming.ObjectNamingStrategy;
 @ManagedResource(description = "MetricWriter for pushing metrics to JMX MBeans.")
 public class JmxMetricWriter implements MetricWriter {
 
-	private static Log logger = LogFactory.getLog(JmxMetricWriter.class);
+	private static final Log logger = LogFactory.getLog(JmxMetricWriter.class);
 
-	private final ConcurrentMap<String, MetricValue> values = new ConcurrentHashMap<String, MetricValue>();
+	private final ConcurrentMap<String, MetricValue> values = new ConcurrentHashMap<>();
 
 	private final MBeanExporter exporter;
 
@@ -71,7 +72,7 @@ public class JmxMetricWriter implements MetricWriter {
 
 	@ManagedOperation
 	public void increment(String name, long value) {
-		increment(new Delta<Long>(name, value));
+		increment(new Delta<>(name, value));
 	}
 
 	@Override
@@ -82,7 +83,7 @@ public class JmxMetricWriter implements MetricWriter {
 
 	@ManagedOperation
 	public void set(String name, double value) {
-		set(new Metric<Double>(name, value));
+		set(new Metric<>(name, value));
 	}
 
 	@Override
@@ -108,9 +109,13 @@ public class JmxMetricWriter implements MetricWriter {
 	}
 
 	private MetricValue getValue(String name) {
-		if (!this.values.containsKey(name)) {
-			this.values.putIfAbsent(name, new MetricValue());
-			MetricValue value = this.values.get(name);
+		MetricValue value = this.values.get(name);
+		if (value == null) {
+			value = new MetricValue();
+			MetricValue oldValue = this.values.putIfAbsent(name, value);
+			if (oldValue != null) {
+				value = oldValue;
+			}
 			try {
 				this.exporter.registerManagedResource(value, getName(name, value));
 			}
@@ -118,7 +123,7 @@ public class JmxMetricWriter implements MetricWriter {
 				// Could not register mbean, maybe just a race condition
 			}
 		}
-		return this.values.get(name);
+		return value;
 	}
 
 	private ObjectName getName(String name, MetricValue value)

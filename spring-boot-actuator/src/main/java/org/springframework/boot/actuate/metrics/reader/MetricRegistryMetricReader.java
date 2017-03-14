@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2015 the original author or authors.
+ * Copyright 2012-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,16 +25,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.BeanWrapperImpl;
-import org.springframework.boot.actuate.metrics.Metric;
-import org.springframework.util.ClassUtils;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.util.StringUtils;
-
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.Histogram;
@@ -43,6 +33,16 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.MetricRegistryListener;
 import com.codahale.metrics.Sampling;
 import com.codahale.metrics.Timer;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.BeanWrapperImpl;
+import org.springframework.boot.actuate.metrics.Metric;
+import org.springframework.util.ClassUtils;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.util.StringUtils;
 
 /**
  * A Spring Boot {@link MetricReader} that reads metrics from a Dropwizard
@@ -55,15 +55,15 @@ import com.codahale.metrics.Timer;
  */
 public class MetricRegistryMetricReader implements MetricReader, MetricRegistryListener {
 
-	private static Log logger = LogFactory.getLog(MetricRegistryMetricReader.class);
+	private static final Log logger = LogFactory.getLog(MetricRegistryMetricReader.class);
 
-	private static final Map<Class<?>, Set<String>> numberKeys = new ConcurrentHashMap<Class<?>, Set<String>>();
+	private static final Map<Class<?>, Set<String>> numberKeys = new ConcurrentHashMap<>();
 
 	private final Object monitor = new Object();
 
-	private final Map<String, String> names = new ConcurrentHashMap<String, String>();
+	private final Map<String, String> names = new ConcurrentHashMap<>();
 
-	private final MultiValueMap<String, String> reverse = new LinkedMultiValueMap<String, String>();
+	private final MultiValueMap<String, String> reverse = new LinkedMultiValueMap<>();
 
 	private final MetricRegistry registry;
 
@@ -87,9 +87,15 @@ public class MetricRegistryMetricReader implements MetricReader, MetricRegistryL
 			return new Metric<Number>(metricName, counter.getCount());
 		}
 		if (metric instanceof Gauge) {
-			@SuppressWarnings("unchecked")
-			Gauge<Number> value = (Gauge<Number>) metric;
-			return new Metric<Number>(metricName, value.getValue());
+			Object value = ((Gauge<?>) metric).getValue();
+			if (value instanceof Number) {
+				return new Metric<>(metricName, (Number) value);
+			}
+			if (logger.isDebugEnabled()) {
+				logger.debug("Ignoring gauge '" + name + "' (" + metric
+						+ ") as its value is not a Number");
+			}
+			return null;
 		}
 		if (metric instanceof Sampling) {
 			if (metricName.contains(".snapshot.")) {
@@ -99,10 +105,10 @@ public class MetricRegistryMetricReader implements MetricReader, MetricRegistryL
 					value = TimeUnit.MILLISECONDS.convert(value.longValue(),
 							TimeUnit.NANOSECONDS);
 				}
-				return new Metric<Number>(metricName, value);
+				return new Metric<>(metricName, value);
 			}
 		}
-		return new Metric<Number>(metricName, getMetric(metric, metricName));
+		return new Metric<>(metricName, getMetric(metric, metricName));
 	}
 
 	@Override
@@ -110,7 +116,7 @@ public class MetricRegistryMetricReader implements MetricReader, MetricRegistryL
 		return new Iterable<Metric<?>>() {
 			@Override
 			public Iterator<Metric<?>> iterator() {
-				Set<Metric<?>> metrics = new HashSet<Metric<?>>();
+				Set<Metric<?>> metrics = new HashSet<>();
 				for (String name : MetricRegistryMetricReader.this.names.keySet()) {
 					Metric<?> metric = findOne(name);
 					if (metric != null) {
@@ -129,13 +135,6 @@ public class MetricRegistryMetricReader implements MetricReader, MetricRegistryL
 
 	@Override
 	public void onGaugeAdded(String name, Gauge<?> gauge) {
-		if (!(gauge.getValue() instanceof Number)) {
-			if (logger.isDebugEnabled()) {
-				logger.debug("Ignoring gauge '" + name + "' (" + gauge
-						+ ") as its value is not a Number");
-			}
-			return;
-		}
 		this.names.put(name, name);
 		synchronized (this.monitor) {
 			this.reverse.add(name, name);
@@ -237,11 +236,11 @@ public class MetricRegistryMetricReader implements MetricReader, MetricRegistryL
 	private static Set<String> getNumberKeys(Object metric) {
 		Set<String> result = numberKeys.get(metric.getClass());
 		if (result == null) {
-			result = new HashSet<String>();
+			result = new HashSet<>();
 		}
 		if (result.isEmpty()) {
-			for (PropertyDescriptor descriptor : BeanUtils.getPropertyDescriptors(metric
-					.getClass())) {
+			for (PropertyDescriptor descriptor : BeanUtils
+					.getPropertyDescriptors(metric.getClass())) {
 				if (ClassUtils.isAssignable(Number.class, descriptor.getPropertyType())) {
 					result.add(descriptor.getName());
 				}

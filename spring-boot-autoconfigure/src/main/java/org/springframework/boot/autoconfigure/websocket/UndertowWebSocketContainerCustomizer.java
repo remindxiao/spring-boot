@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2014 the original author or authors.
+ * Copyright 2012-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,30 +16,29 @@
 
 package org.springframework.boot.autoconfigure.websocket;
 
-import org.springframework.boot.context.embedded.undertow.UndertowDeploymentInfoCustomizer;
-import org.springframework.boot.context.embedded.undertow.UndertowEmbeddedServletContainerFactory;
-
 import io.undertow.servlet.api.DeploymentInfo;
 import io.undertow.websockets.jsr.WebSocketDeploymentInfo;
 
+import org.springframework.boot.web.embedded.undertow.UndertowDeploymentInfoCustomizer;
+import org.springframework.boot.web.embedded.undertow.UndertowServletWebServerFactory;
+
 /**
- * {@link WebSocketContainerCustomizer} for
- * {@link UndertowEmbeddedServletContainerFactory}.
+ * {@link WebSocketContainerCustomizer} for {@link UndertowServletWebServerFactory}.
  *
  * @author Phillip Webb
  * @since 1.2.0
  */
-public class UndertowWebSocketContainerCustomizer extends
-		WebSocketContainerCustomizer<UndertowEmbeddedServletContainerFactory> {
+public class UndertowWebSocketContainerCustomizer
+		extends WebSocketContainerCustomizer<UndertowServletWebServerFactory> {
 
 	@Override
-	protected void doCustomize(UndertowEmbeddedServletContainerFactory container) {
+	protected void doCustomize(UndertowServletWebServerFactory factory) {
 		WebsocketDeploymentInfoCustomizer customizer = new WebsocketDeploymentInfoCustomizer();
-		container.addDeploymentInfoCustomizers(customizer);
+		factory.addDeploymentInfoCustomizers(customizer);
 	}
 
-	private static class WebsocketDeploymentInfoCustomizer implements
-			UndertowDeploymentInfoCustomizer {
+	private static class WebsocketDeploymentInfoCustomizer
+			implements UndertowDeploymentInfoCustomizer {
 
 		@Override
 		public void customize(DeploymentInfo deploymentInfo) {

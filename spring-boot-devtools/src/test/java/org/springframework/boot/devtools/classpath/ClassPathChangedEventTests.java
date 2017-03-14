@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2015 the original author or authors.
+ * Copyright 2012-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,11 +22,10 @@ import java.util.Set;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+
 import org.springframework.boot.devtools.filewatch.ChangedFiles;
 
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.sameInstance;
-import static org.junit.Assert.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Tests for {@link ClassPathChangedEvent}.
@@ -49,20 +48,20 @@ public class ClassPathChangedEventTests {
 
 	@Test
 	public void getChangeSet() throws Exception {
-		Set<ChangedFiles> changeSet = new LinkedHashSet<ChangedFiles>();
+		Set<ChangedFiles> changeSet = new LinkedHashSet<>();
 		ClassPathChangedEvent event = new ClassPathChangedEvent(this.source, changeSet,
 				false);
-		assertThat(event.getChangeSet(), sameInstance(changeSet));
+		assertThat(event.getChangeSet()).isSameAs(changeSet);
 	}
 
 	@Test
 	public void getRestartRequired() throws Exception {
-		Set<ChangedFiles> changeSet = new LinkedHashSet<ChangedFiles>();
+		Set<ChangedFiles> changeSet = new LinkedHashSet<>();
 		ClassPathChangedEvent event;
 		event = new ClassPathChangedEvent(this.source, changeSet, false);
-		assertThat(event.isRestartRequired(), equalTo(false));
+		assertThat(event.isRestartRequired()).isFalse();
 		event = new ClassPathChangedEvent(this.source, changeSet, true);
-		assertThat(event.isRestartRequired(), equalTo(true));
+		assertThat(event.isRestartRequired()).isTrue();
 	}
 
 }

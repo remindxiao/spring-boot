@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2014 the original author or authors.
+ * Copyright 2012-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,6 @@ package org.springframework.boot.logging.logback;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.springframework.util.Assert;
-
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.LoggerContext;
@@ -31,6 +29,8 @@ import ch.qos.logback.core.pattern.Converter;
 import ch.qos.logback.core.spi.ContextAware;
 import ch.qos.logback.core.spi.LifeCycle;
 import ch.qos.logback.core.spi.PropertyContainer;
+
+import org.springframework.util.Assert;
 
 /**
  * Allows programmatic configuration of logback which is usually faster than parsing XML.
@@ -63,7 +63,7 @@ class LogbackConfigurator {
 		Map<String, String> registry = (Map<String, String>) this.context
 				.getObject(CoreConstants.PATTERN_RULE_REGISTRY);
 		if (registry == null) {
-			registry = new HashMap<String, String>();
+			registry = new HashMap<>();
 			this.context.putObject(CoreConstants.PATTERN_RULE_REGISTRY, registry);
 		}
 		registry.put(conversionWord, converterClass.getName());

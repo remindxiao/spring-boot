@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2015 the original author or authors.
+ * Copyright 2012-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,37 +24,41 @@ import javax.servlet.Filter;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.catalina.Valve;
+import org.apache.catalina.valves.AccessLogValve;
+
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryUtils;
 import org.springframework.beans.factory.HierarchicalBeanFactory;
 import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.actuate.autoconfigure.ManagementWebSecurityAutoConfiguration.ManagementWebSecurityConfigurerAdapter;
 import org.springframework.boot.actuate.endpoint.mvc.EndpointHandlerMapping;
 import org.springframework.boot.actuate.endpoint.mvc.ManagementErrorEndpoint;
 import org.springframework.boot.actuate.endpoint.mvc.MvcEndpoint;
 import org.springframework.boot.actuate.endpoint.mvc.MvcEndpoints;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingClass;
 import org.springframework.boot.autoconfigure.condition.SearchStrategy;
+import org.springframework.boot.autoconfigure.hateoas.HypermediaHttpMessageConverterConfiguration;
+import org.springframework.boot.autoconfigure.web.DefaultServletWebServerFactoryCustomizer;
 import org.springframework.boot.autoconfigure.web.DispatcherServletAutoConfiguration;
 import org.springframework.boot.autoconfigure.web.ErrorAttributes;
 import org.springframework.boot.autoconfigure.web.ServerProperties;
-import org.springframework.boot.context.embedded.ConfigurableEmbeddedServletContainer;
-import org.springframework.boot.context.embedded.EmbeddedServletContainer;
-import org.springframework.boot.context.embedded.EmbeddedServletContainerCustomizer;
-import org.springframework.boot.context.embedded.ErrorPage;
+import org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory;
+import org.springframework.boot.web.embedded.undertow.UndertowServletWebServerFactory;
+import org.springframework.boot.web.server.ErrorPage;
+import org.springframework.boot.web.server.WebServer;
+import org.springframework.boot.web.servlet.server.ConfigurableServletWebServerFactory;
+import org.springframework.boot.web.servlet.server.ServletWebServerFactory;
+import org.springframework.boot.web.servlet.server.ServletWebServerFactoryCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
+import org.springframework.hateoas.LinkDiscoverer;
+import org.springframework.hateoas.config.EnableHypermediaSupport;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.web.servlet.DispatcherServlet;
 import org.springframework.web.servlet.HandlerAdapter;
 import org.springframework.web.servlet.HandlerExceptionResolver;
@@ -65,22 +69,18 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 /**
  * Configuration triggered from {@link EndpointWebMvcAutoConfiguration} when a new
- * {@link EmbeddedServletContainer} running on a different port is required.
+ * {@link WebServer} running on a different port is required.
  *
  * @author Dave Syer
  * @author Stephane Nicoll
+ * @author Andy Wilkinson
+ * @author Eddú Meléndez
  * @see EndpointWebMvcAutoConfiguration
  */
 @Configuration
 @EnableWebMvc
 @Import(ManagementContextConfigurationsImportSelector.class)
 public class EndpointWebMvcChildContextConfiguration {
-
-	private static Log logger = LogFactory
-			.getLog(EndpointWebMvcChildContextConfiguration.class);
-
-	@Value("${error.path:/error}")
-	private String errorPath = "/error";
 
 	@Bean(name = DispatcherServletAutoConfiguration.DEFAULT_DISPATCHER_SERVLET_BEAN_NAME)
 	public DispatcherServlet dispatcherServlet() {
@@ -109,27 +109,36 @@ public class EndpointWebMvcChildContextConfiguration {
 	}
 
 	@Bean
-	public ServerCustomization serverCustomization() {
-		return new ServerCustomization();
+	public ServerFactoryCustomization serverCustomization() {
+		return new ServerFactoryCustomization();
+	}
+
+	@Bean
+	public UndertowAccessLogCustomizer undertowAccessLogCustomizer() {
+		return new UndertowAccessLogCustomizer();
+	}
+
+	@Bean
+	@ConditionalOnClass(name = "org.apache.catalina.valves.AccessLogValve")
+	public TomcatAccessLogCustomizer tomcatAccessLogCustomizer() {
+		return new TomcatAccessLogCustomizer();
 	}
 
 	/*
 	 * The error controller is present but not mapped as an endpoint in this context
-	 * because of the DispatcherServlet having had it's HandlerMapping explicitly
-	 * disabled. So we expose the same feature but only for machine endpoints.
+	 * because of the DispatcherServlet having had its HandlerMapping explicitly disabled.
+	 * So we expose the same feature but only for machine endpoints.
 	 */
 	@Bean
-	public ManagementErrorEndpoint errorEndpoint(final ErrorAttributes errorAttributes) {
-		return new ManagementErrorEndpoint(this.errorPath, errorAttributes);
+	@ConditionalOnBean(ErrorAttributes.class)
+	public ManagementErrorEndpoint errorEndpoint(ErrorAttributes errorAttributes) {
+		return new ManagementErrorEndpoint(errorAttributes);
 	}
 
 	/**
-	 * Configuration to add {@link HandlerMapping} for {@link MvcEndpoint}s. See
-	 * {@link SecureEndpointHandlerMappingConfiguration} for an extended version that also
-	 * configures the security filter.
+	 * Configuration to add {@link HandlerMapping} for {@link MvcEndpoint}s.
 	 */
 	@Configuration
-	@ConditionalOnMissingClass("org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter")
 	protected static class EndpointHandlerMappingConfiguration {
 
 		@Autowired
@@ -137,52 +146,13 @@ public class EndpointWebMvcChildContextConfiguration {
 				ListableBeanFactory beanFactory, EndpointHandlerMapping mapping) {
 			// In a child context we definitely want to see the parent endpoints
 			mapping.setDetectHandlerMethodsInAncestorContexts(true);
-			postProcessMapping(beanFactory, mapping);
-		}
-
-		/**
-		 * Hook to allow additional post processing of {@link EndpointHandlerMapping}.
-		 * @param beanFactory the source bean factory
-		 * @param mapping the mapping to customize
-		 */
-		protected void postProcessMapping(ListableBeanFactory beanFactory,
-				EndpointHandlerMapping mapping) {
-		}
-
-	}
-
-	/**
-	 * Extension of {@link EndpointHandlerMappingConfiguration} that also configures the
-	 * security filter.
-	 */
-	@Configuration
-	@ConditionalOnClass(WebSecurityConfigurerAdapter.class)
-	protected static class SecureEndpointHandlerMappingConfiguration extends
-			EndpointHandlerMappingConfiguration {
-
-		@Override
-		protected void postProcessMapping(ListableBeanFactory beanFactory,
-				EndpointHandlerMapping mapping) {
-			// The parent context has the security filter, so we need to get it injected
-			// with our EndpointHandlerMapping if we can.
-			if (BeanFactoryUtils.beanNamesForTypeIncludingAncestors(beanFactory,
-					ManagementWebSecurityConfigurerAdapter.class).length == 1) {
-				ManagementWebSecurityConfigurerAdapter bean = beanFactory
-						.getBean(ManagementWebSecurityConfigurerAdapter.class);
-				bean.setEndpointHandlerMapping(mapping);
-			}
-			else {
-				logger.warn("No single bean of type "
-						+ ManagementWebSecurityConfigurerAdapter.class.getSimpleName()
-						+ " found (this might make some endpoints inaccessible without authentication)");
-			}
 		}
 
 	}
 
 	@Configuration
 	@ConditionalOnClass({ EnableWebSecurity.class, Filter.class })
-	@ConditionalOnBean(name = "springSecurityFilterChain", search = SearchStrategy.PARENTS)
+	@ConditionalOnBean(name = "springSecurityFilterChain", search = SearchStrategy.ANCESTORS)
 	public static class EndpointWebMvcChildContextSecurityConfiguration {
 
 		@Bean
@@ -193,20 +163,27 @@ public class EndpointWebMvcChildContextConfiguration {
 
 	}
 
-	static class ServerCustomization implements EmbeddedServletContainerCustomizer,
-			Ordered {
+	@Configuration
+	@ConditionalOnClass({ LinkDiscoverer.class })
+	@Import(HypermediaHttpMessageConverterConfiguration.class)
+	@EnableHypermediaSupport(type = EnableHypermediaSupport.HypermediaType.HAL)
+	static class HypermediaConfiguration {
 
-		@Value("${error.path:/error}")
-		private String errorPath = "/error";
+	}
+
+	static class ServerFactoryCustomization
+			implements ServletWebServerFactoryCustomizer, Ordered {
 
 		@Autowired
 		private ListableBeanFactory beanFactory;
 
-		// This needs to be lazily initialized because EmbeddedServletContainerCustomizer
+		// This needs to be lazily initialized because web server customizer
 		// instances get their callback very early in the context lifecycle.
 		private ManagementServerProperties managementServerProperties;
 
 		private ServerProperties server;
+
+		private DefaultServletWebServerFactoryCustomizer serverCustomizer;
 
 		@Override
 		public int getOrder() {
@@ -214,23 +191,31 @@ public class EndpointWebMvcChildContextConfiguration {
 		}
 
 		@Override
-		public void customize(ConfigurableEmbeddedServletContainer container) {
+		public void customize(ConfigurableServletWebServerFactory webServerFactory) {
 			if (this.managementServerProperties == null) {
 				this.managementServerProperties = BeanFactoryUtils
 						.beanOfTypeIncludingAncestors(this.beanFactory,
 								ManagementServerProperties.class);
 				this.server = BeanFactoryUtils.beanOfTypeIncludingAncestors(
 						this.beanFactory, ServerProperties.class);
+				this.serverCustomizer = BeanFactoryUtils.beanOfTypeIncludingAncestors(
+						this.beanFactory, DefaultServletWebServerFactoryCustomizer.class);
 			}
 			// Customize as per the parent context first (so e.g. the access logs go to
 			// the same place)
-			this.server.customize(container);
+			this.serverCustomizer.customize(webServerFactory);
 			// Then reset the error pages
-			container.setErrorPages(Collections.<ErrorPage>emptySet());
+			webServerFactory.setErrorPages(Collections.<ErrorPage>emptySet());
+			// and the context path
+			webServerFactory.setContextPath("");
 			// and add the management-specific bits
-			container.setPort(this.managementServerProperties.getPort());
-			container.setAddress(this.managementServerProperties.getAddress());
-			container.addErrorPages(new ErrorPage(this.errorPath));
+			webServerFactory.setPort(this.managementServerProperties.getPort());
+			if (this.managementServerProperties.getSsl() != null) {
+				webServerFactory.setSsl(this.managementServerProperties.getSsl());
+			}
+			webServerFactory.setServerHeader(this.server.getServerHeader());
+			webServerFactory.setAddress(this.managementServerProperties.getAddress());
+			webServerFactory.addErrorPages(new ErrorPage(this.server.getError().getPath()));
 		}
 
 	}
@@ -258,7 +243,7 @@ public class EndpointWebMvcChildContextConfiguration {
 		}
 
 		private List<HandlerMapping> extractMappings() {
-			List<HandlerMapping> list = new ArrayList<HandlerMapping>();
+			List<HandlerMapping> list = new ArrayList<>();
 			list.addAll(this.beanFactory.getBeansOfType(HandlerMapping.class).values());
 			list.remove(this);
 			AnnotationAwareOrderComparator.sort(list);
@@ -275,7 +260,7 @@ public class EndpointWebMvcChildContextConfiguration {
 		private List<HandlerAdapter> adapters;
 
 		private List<HandlerAdapter> extractAdapters() {
-			List<HandlerAdapter> list = new ArrayList<HandlerAdapter>();
+			List<HandlerAdapter> list = new ArrayList<>();
 			list.addAll(this.beanFactory.getBeansOfType(HandlerAdapter.class).values());
 			list.remove(this);
 			AnnotationAwareOrderComparator.sort(list);
@@ -332,7 +317,7 @@ public class EndpointWebMvcChildContextConfiguration {
 		private List<HandlerExceptionResolver> resolvers;
 
 		private List<HandlerExceptionResolver> extractResolvers() {
-			List<HandlerExceptionResolver> list = new ArrayList<HandlerExceptionResolver>();
+			List<HandlerExceptionResolver> list = new ArrayList<>();
 			list.addAll(this.beanFactory.getBeansOfType(HandlerExceptionResolver.class)
 					.values());
 			list.remove(this);
@@ -354,6 +339,77 @@ public class EndpointWebMvcChildContextConfiguration {
 				}
 			}
 			return null;
+		}
+
+	}
+
+	static abstract class AccessLogCustomizer<T extends ServletWebServerFactory>
+			implements ServletWebServerFactoryCustomizer, Ordered {
+
+		private final Class<T> factoryClass;
+
+		AccessLogCustomizer(Class<T> factoryClass) {
+			this.factoryClass = factoryClass;
+		}
+
+		protected String customizePrefix(String prefix) {
+			return "management_" + prefix;
+		}
+
+		@Override
+		public int getOrder() {
+			return 1;
+		}
+
+		@Override
+		public void customize(ConfigurableServletWebServerFactory serverFactory) {
+			if (this.factoryClass.isInstance(serverFactory)) {
+				customize(this.factoryClass.cast(serverFactory));
+			}
+		}
+
+		abstract void customize(T webServerFactory);
+
+	}
+
+	static class TomcatAccessLogCustomizer
+			extends AccessLogCustomizer<TomcatServletWebServerFactory> {
+
+		TomcatAccessLogCustomizer() {
+			super(TomcatServletWebServerFactory.class);
+		}
+
+		@Override
+		public void customize(TomcatServletWebServerFactory serverFactory) {
+			AccessLogValve accessLogValve = findAccessLogValve(serverFactory);
+			if (accessLogValve == null) {
+				return;
+			}
+			accessLogValve.setPrefix(customizePrefix(accessLogValve.getPrefix()));
+		}
+
+		private AccessLogValve findAccessLogValve(
+				TomcatServletWebServerFactory serverFactory) {
+			for (Valve engineValve : serverFactory.getEngineValves()) {
+				if (engineValve instanceof AccessLogValve) {
+					return (AccessLogValve) engineValve;
+				}
+			}
+			return null;
+		}
+
+	}
+
+	static class UndertowAccessLogCustomizer
+			extends AccessLogCustomizer<UndertowServletWebServerFactory> {
+
+		UndertowAccessLogCustomizer() {
+			super(UndertowServletWebServerFactory.class);
+		}
+
+		@Override
+		public void customize(UndertowServletWebServerFactory serverFactory) {
+			serverFactory.setAccessLogPrefix(customizePrefix(serverFactory.getAccessLogPrefix()));
 		}
 
 	}

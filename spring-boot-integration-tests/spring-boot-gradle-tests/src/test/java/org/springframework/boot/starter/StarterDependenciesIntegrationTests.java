@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2015 the original author or authors.
+ * Copyright 2012-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,10 +30,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+
 import org.springframework.boot.gradle.ProjectCreator;
 import org.springframework.boot.gradle.Versions;
-
-import static org.junit.Assert.fail;
 
 /**
  * Tests for the various starter projects to check that they don't pull in unwanted
@@ -59,7 +58,7 @@ public class StarterDependenciesIntegrationTests {
 
 	@Parameters
 	public static List<String[]> getStarters() {
-		List<String[]> starters = new ArrayList<String[]>();
+		List<String[]> starters = new ArrayList<>();
 		for (File file : new File("../../spring-boot-starters").listFiles()) {
 			if (file.isDirectory() && new File(file, "pom.xml").exists()) {
 				String name = file.getName();
@@ -108,11 +107,8 @@ public class StarterDependenciesIntegrationTests {
 			project.newBuild().forTasks(task).withArguments(this.buildArguments).run();
 		}
 		catch (BuildException ex) {
-			Throwable root = ex;
-			while (root.getCause() != null) {
-				root = root.getCause();
-			}
-			fail(root.getMessage());
+			throw new RuntimeException(ex);
 		}
 	}
+
 }

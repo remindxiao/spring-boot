@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2015 the original author or authors.
+ * Copyright 2012-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,7 +41,7 @@ public class ConfigurationBeanFactoryMetaData implements BeanFactoryPostProcesso
 
 	private ConfigurableListableBeanFactory beanFactory;
 
-	private Map<String, MetaData> beans = new HashMap<String, MetaData>();
+	private Map<String, MetaData> beans = new HashMap<>();
 
 	@Override
 	public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory)
@@ -59,7 +59,7 @@ public class ConfigurationBeanFactoryMetaData implements BeanFactoryPostProcesso
 
 	public <A extends Annotation> Map<String, Object> getBeansWithFactoryAnnotation(
 			Class<A> type) {
-		Map<String, Object> result = new HashMap<String, Object>();
+		Map<String, Object> result = new HashMap<>();
 		for (String name : this.beans.keySet()) {
 			if (findFactoryAnnotation(name, type) != null) {
 				result.put(name, this.beanFactory.getBean(name));
@@ -68,7 +68,8 @@ public class ConfigurationBeanFactoryMetaData implements BeanFactoryPostProcesso
 		return result;
 	}
 
-	public <A extends Annotation> A findFactoryAnnotation(String beanName, Class<A> type) {
+	public <A extends Annotation> A findFactoryAnnotation(String beanName,
+			Class<A> type) {
 		Method method = findFactoryMethod(beanName);
 		return (method == null ? null : AnnotationUtils.findAnnotation(method, type));
 	}
@@ -77,14 +78,14 @@ public class ConfigurationBeanFactoryMetaData implements BeanFactoryPostProcesso
 		if (!this.beans.containsKey(beanName)) {
 			return null;
 		}
-		final AtomicReference<Method> found = new AtomicReference<Method>(null);
+		final AtomicReference<Method> found = new AtomicReference<>(null);
 		MetaData meta = this.beans.get(beanName);
 		final String factory = meta.getMethod();
 		Class<?> type = this.beanFactory.getType(meta.getBean());
 		ReflectionUtils.doWithMethods(type, new MethodCallback() {
 			@Override
-			public void doWith(Method method) throws IllegalArgumentException,
-					IllegalAccessException {
+			public void doWith(Method method)
+					throws IllegalArgumentException, IllegalAccessException {
 				if (method.getName().equals(factory)) {
 					found.compareAndSet(null, method);
 				}

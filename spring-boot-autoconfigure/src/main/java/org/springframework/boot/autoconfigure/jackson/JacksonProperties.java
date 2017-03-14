@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2015 the original author or authors.
+ * Copyright 2012-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,8 +21,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 
-import org.springframework.boot.context.properties.ConfigurationProperties;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
@@ -30,12 +28,14 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
 /**
  * Configuration properties to configure Jackson.
  *
  * @author Andy Wilkinson
  * @author Marcel Overdijk
- * @author Johannes Stelzer
+ * @author Johannes Edmeier
  * @since 1.2.0
  */
 @ConfigurationProperties(prefix = "spring.jackson")
@@ -63,33 +63,33 @@ public class JacksonProperties {
 	/**
 	 * Jackson on/off features that affect the way Java objects are serialized.
 	 */
-	private Map<SerializationFeature, Boolean> serialization = new HashMap<SerializationFeature, Boolean>();
+	private Map<SerializationFeature, Boolean> serialization = new HashMap<>();
 
 	/**
 	 * Jackson on/off features that affect the way Java objects are deserialized.
 	 */
-	private Map<DeserializationFeature, Boolean> deserialization = new HashMap<DeserializationFeature, Boolean>();
+	private Map<DeserializationFeature, Boolean> deserialization = new HashMap<>();
 
 	/**
 	 * Jackson general purpose on/off features.
 	 */
-	private Map<MapperFeature, Boolean> mapper = new HashMap<MapperFeature, Boolean>();
+	private Map<MapperFeature, Boolean> mapper = new HashMap<>();
 
 	/**
 	 * Jackson on/off features for parsers.
 	 */
-	private Map<JsonParser.Feature, Boolean> parser = new HashMap<JsonParser.Feature, Boolean>();
+	private Map<JsonParser.Feature, Boolean> parser = new HashMap<>();
 
 	/**
 	 * Jackson on/off features for generators.
 	 */
-	private Map<JsonGenerator.Feature, Boolean> generator = new HashMap<JsonGenerator.Feature, Boolean>();
+	private Map<JsonGenerator.Feature, Boolean> generator = new HashMap<>();
 
 	/**
 	 * Controls the inclusion of properties during serialization. Configured with one of
 	 * the values in Jackson's JsonInclude.Include enumeration.
 	 */
-	private JsonInclude.Include serializationInclusion;
+	private JsonInclude.Include defaultPropertyInclusion;
 
 	/**
 	 * Time zone used when formatting dates. Configured using any recognized time zone
@@ -146,12 +146,13 @@ public class JacksonProperties {
 		return this.generator;
 	}
 
-	public JsonInclude.Include getSerializationInclusion() {
-		return this.serializationInclusion;
+	public JsonInclude.Include getDefaultPropertyInclusion() {
+		return this.defaultPropertyInclusion;
 	}
 
-	public void setSerializationInclusion(JsonInclude.Include serializationInclusion) {
-		this.serializationInclusion = serializationInclusion;
+	public void setDefaultPropertyInclusion(
+			JsonInclude.Include defaultPropertyInclusion) {
+		this.defaultPropertyInclusion = defaultPropertyInclusion;
 	}
 
 	public TimeZone getTimeZone() {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2015 the original author or authors.
+ * Copyright 2012-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,14 @@ import java.util.List;
 
 import org.apache.maven.settings.Profile;
 import org.apache.maven.settings.Repository;
+import org.codehaus.plexus.interpolation.InterpolationException;
+import org.codehaus.plexus.interpolation.Interpolator;
+import org.codehaus.plexus.interpolation.PropertiesBasedValueSource;
+import org.codehaus.plexus.interpolation.RegexBasedInterpolator;
+
 import org.springframework.boot.cli.compiler.grape.RepositoryConfiguration;
+import org.springframework.boot.cli.compiler.maven.MavenSettings;
+import org.springframework.boot.cli.compiler.maven.MavenSettingsReader;
 import org.springframework.util.StringUtils;
 
 /**
@@ -52,7 +59,7 @@ public final class RepositoryConfigurationFactory {
 	 */
 	public static List<RepositoryConfiguration> createDefaultRepositoryConfiguration() {
 		MavenSettings mavenSettings = new MavenSettingsReader().readSettings();
-		List<RepositoryConfiguration> repositoryConfiguration = new ArrayList<RepositoryConfiguration>();
+		List<RepositoryConfiguration> repositoryConfiguration = new ArrayList<>();
 		repositoryConfiguration.add(MAVEN_CENTRAL);
 		if (!Boolean.getBoolean("disableSpringSnapshotRepos")) {
 			repositoryConfiguration.add(SPRING_MILESTONE);
@@ -75,14 +82,34 @@ public final class RepositoryConfigurationFactory {
 	}
 
 	private static void addActiveProfileRepositories(List<Profile> activeProfiles,
-			List<RepositoryConfiguration> repositoryConfiguration) {
+			List<RepositoryConfiguration> configurations) {
 		for (Profile activeProfile : activeProfiles) {
+			Interpolator interpolator = new RegexBasedInterpolator();
+			interpolator.addValueSource(
+					new PropertiesBasedValueSource(activeProfile.getProperties()));
 			for (Repository repository : activeProfile.getRepositories()) {
-				repositoryConfiguration.add(new RepositoryConfiguration(repository
-						.getId(), URI.create(repository.getUrl()), repository
-						.getSnapshots() != null ? repository.getSnapshots().isEnabled()
-						: false));
+				configurations.add(getRepositoryConfiguration(interpolator, repository));
 			}
+		}
+	}
+
+	private static RepositoryConfiguration getRepositoryConfiguration(
+			Interpolator interpolator, Repository repository) {
+		String name = interpolate(interpolator, repository.getId());
+		String url = interpolate(interpolator, repository.getUrl());
+		boolean snapshotsEnabled = false;
+		if (repository.getSnapshots() != null) {
+			snapshotsEnabled = repository.getSnapshots().isEnabled();
+		}
+		return new RepositoryConfiguration(name, URI.create(url), snapshotsEnabled);
+	}
+
+	private static String interpolate(Interpolator interpolator, String value) {
+		try {
+			return interpolator.interpolate(value);
+		}
+		catch (InterpolationException ex) {
+			return value;
 		}
 	}
 

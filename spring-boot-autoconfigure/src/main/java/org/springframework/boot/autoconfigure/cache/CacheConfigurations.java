@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2015 the original author or authors.
+ * Copyright 2012-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,25 +26,28 @@ import org.springframework.util.Assert;
  * Mappings between {@link CacheType} and {@code @Configuration}.
  *
  * @author Phillip Webb
+ * @author Eddú Meléndez
  */
 final class CacheConfigurations {
 
-	private CacheConfigurations() {
-	}
-
 	private static final Map<CacheType, Class<?>> MAPPINGS;
+
 	static {
-		Map<CacheType, Class<?>> mappings = new HashMap<CacheType, Class<?>>();
+		Map<CacheType, Class<?>> mappings = new HashMap<>();
 		mappings.put(CacheType.GENERIC, GenericCacheConfiguration.class);
 		mappings.put(CacheType.EHCACHE, EhCacheCacheConfiguration.class);
 		mappings.put(CacheType.HAZELCAST, HazelcastCacheConfiguration.class);
 		mappings.put(CacheType.INFINISPAN, InfinispanCacheConfiguration.class);
 		mappings.put(CacheType.JCACHE, JCacheCacheConfiguration.class);
+		mappings.put(CacheType.COUCHBASE, CouchbaseCacheConfiguration.class);
 		mappings.put(CacheType.REDIS, RedisCacheConfiguration.class);
-		mappings.put(CacheType.GUAVA, GuavaCacheConfiguration.class);
+		mappings.put(CacheType.CAFFEINE, CaffeineCacheConfiguration.class);
 		mappings.put(CacheType.SIMPLE, SimpleCacheConfiguration.class);
 		mappings.put(CacheType.NONE, NoOpCacheConfiguration.class);
 		MAPPINGS = Collections.unmodifiableMap(mappings);
+	}
+
+	private CacheConfigurations() {
 	}
 
 	public static String getConfigurationClass(CacheType cacheType) {
@@ -59,8 +62,8 @@ final class CacheConfigurations {
 				return entry.getKey();
 			}
 		}
-		throw new IllegalStateException("Unknown configuration class "
-				+ configurationClassName);
+		throw new IllegalStateException(
+				"Unknown configuration class " + configurationClassName);
 	}
 
 }

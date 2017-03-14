@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2015 the original author or authors.
+ * Copyright 2012-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,9 @@
 
 package org.springframework.boot.autoconfigure.condition;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.springframework.context.annotation.Condition;
 
 /**
@@ -23,7 +26,7 @@ import org.springframework.context.annotation.Condition;
  * to create composite conditions, for example:
  *
  * <pre class="code">
- * static class OnJndiOrProperty extends AllNestedConditions {
+ * static class OnJndiAndProperty extends AllNestedConditions {
  *
  *    &#064;ConditionalOnJndi()
  *    static class OnJndi {
@@ -37,7 +40,7 @@ import org.springframework.context.annotation.Condition;
  * </pre>
  *
  * @author Phillip Webb
- * @since 1.2.0
+ * @since 1.3.0
  */
 public abstract class AllNestedConditions extends AbstractNestedCondition {
 
@@ -47,10 +50,19 @@ public abstract class AllNestedConditions extends AbstractNestedCondition {
 
 	@Override
 	protected ConditionOutcome getFinalMatchOutcome(MemberMatchOutcomes memberOutcomes) {
-		return new ConditionOutcome(memberOutcomes.getMatches().size() == memberOutcomes
-				.getAll().size(), "nested all match resulted in "
-				+ memberOutcomes.getMatches() + " matches and "
-				+ memberOutcomes.getNonMatches() + " non matches");
+		boolean match = hasSameSize(memberOutcomes.getMatches(), memberOutcomes.getAll());
+		List<ConditionMessage> messages = new ArrayList<>();
+		messages.add(ConditionMessage.forCondition("AllNestedConditions")
+				.because(memberOutcomes.getMatches().size() + " matched "
+						+ memberOutcomes.getNonMatches().size() + " did not"));
+		for (ConditionOutcome outcome : memberOutcomes.getAll()) {
+			messages.add(outcome.getConditionMessage());
+		}
+		return new ConditionOutcome(match, ConditionMessage.of(messages));
+	}
+
+	private boolean hasSameSize(List<?> list1, List<?> list2) {
+		return list1.size() == list2.size();
 	}
 
 }

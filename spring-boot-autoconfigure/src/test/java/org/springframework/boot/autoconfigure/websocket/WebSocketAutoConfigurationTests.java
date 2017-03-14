@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2014 the original author or authors.
+ * Copyright 2012-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,22 +16,27 @@
 
 package org.springframework.boot.autoconfigure.websocket;
 
+import java.net.URL;
+
 import javax.websocket.server.ServerContainer;
 
+import org.apache.catalina.webresources.TomcatURLStreamHandlerFactory;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
-import org.springframework.boot.context.embedded.AnnotationConfigEmbeddedWebApplicationContext;
-import org.springframework.boot.context.embedded.EmbeddedServletContainerCustomizerBeanPostProcessor;
-import org.springframework.boot.context.embedded.EmbeddedServletContainerFactory;
-import org.springframework.boot.context.embedded.jetty.JettyEmbeddedServletContainerFactory;
-import org.springframework.boot.context.embedded.tomcat.TomcatEmbeddedServletContainerFactory;
+
+import org.springframework.boot.web.embedded.jetty.JettyServletWebServerFactory;
+import org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory;
+import org.springframework.boot.web.servlet.context.AnnotationConfigServletWebServerApplicationContext;
+import org.springframework.boot.web.servlet.server.ServletWebServerFactory;
+import org.springframework.boot.web.servlet.server.ServletWebServerFactoryCustomizerBeanPostProcessor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.test.util.ReflectionTestUtils;
 
-import static org.hamcrest.Matchers.instanceOf;
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Tests for {@link WebSocketAutoConfiguration}
@@ -40,11 +45,11 @@ import static org.junit.Assert.assertThat;
  */
 public class WebSocketAutoConfigurationTests {
 
-	private AnnotationConfigEmbeddedWebApplicationContext context;
+	private AnnotationConfigServletWebServerApplicationContext context;
 
 	@Before
 	public void createContext() {
-		this.context = new AnnotationConfigEmbeddedWebApplicationContext();
+		this.context = new AnnotationConfigServletWebServerApplicationContext();
 	}
 
 	@After
@@ -52,6 +57,14 @@ public class WebSocketAutoConfigurationTests {
 		if (this.context != null) {
 			this.context.close();
 		}
+	}
+
+	@BeforeClass
+	@AfterClass
+	public static void uninstallUrlStreamHandlerFactory() {
+		ReflectionTestUtils.setField(TomcatURLStreamHandlerFactory.class, "instance",
+				null);
+		ReflectionTestUtils.setField(URL.class, "factory", null);
 	}
 
 	@Test
@@ -70,17 +83,17 @@ public class WebSocketAutoConfigurationTests {
 			Class<?>... configuration) {
 		this.context.register(configuration);
 		this.context.refresh();
-		Object serverContainer = this.context.getServletContext().getAttribute(
-				"javax.websocket.server.ServerContainer");
-		assertThat(serverContainer, is(instanceOf(ServerContainer.class)));
+		Object serverContainer = this.context.getServletContext()
+				.getAttribute("javax.websocket.server.ServerContainer");
+		assertThat(serverContainer).isInstanceOf(ServerContainer.class);
 
 	}
 
 	static class CommonConfiguration {
 
 		@Bean
-		public EmbeddedServletContainerCustomizerBeanPostProcessor embeddedServletContainerCustomizerBeanPostProcessor() {
-			return new EmbeddedServletContainerCustomizerBeanPostProcessor();
+		public ServletWebServerFactoryCustomizerBeanPostProcessor ServletWebServerCustomizerBeanPostProcessor() {
+			return new ServletWebServerFactoryCustomizerBeanPostProcessor();
 		}
 
 	}
@@ -89,10 +102,10 @@ public class WebSocketAutoConfigurationTests {
 	static class TomcatConfiguration extends CommonConfiguration {
 
 		@Bean
-		public EmbeddedServletContainerFactory servletContainerFactory() {
-			TomcatEmbeddedServletContainerFactory tomcatEmbeddedServletContainerFactory = new TomcatEmbeddedServletContainerFactory();
-			tomcatEmbeddedServletContainerFactory.setPort(0);
-			return tomcatEmbeddedServletContainerFactory;
+		public ServletWebServerFactory webServerFactory() {
+			TomcatServletWebServerFactory factory = new TomcatServletWebServerFactory();
+			factory.setPort(0);
+			return factory;
 		}
 
 	}
@@ -101,10 +114,10 @@ public class WebSocketAutoConfigurationTests {
 	static class JettyConfiguration extends CommonConfiguration {
 
 		@Bean
-		public EmbeddedServletContainerFactory servletContainerFactory() {
-			JettyEmbeddedServletContainerFactory jettyEmbeddedServletContainerFactory = new JettyEmbeddedServletContainerFactory();
-			jettyEmbeddedServletContainerFactory.setPort(0);
-			return jettyEmbeddedServletContainerFactory;
+		public ServletWebServerFactory webServerFactory() {
+			JettyServletWebServerFactory JettyServletWebServerFactory = new JettyServletWebServerFactory();
+			JettyServletWebServerFactory.setPort(0);
+			return JettyServletWebServerFactory;
 		}
 
 	}

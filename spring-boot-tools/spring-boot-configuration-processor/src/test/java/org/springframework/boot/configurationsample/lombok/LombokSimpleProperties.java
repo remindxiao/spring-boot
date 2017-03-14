@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2014 the original author or authors.
+ * Copyright 2012-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,10 +19,10 @@ package org.springframework.boot.configurationsample.lombok;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.springframework.boot.configurationsample.ConfigurationProperties;
-
 import lombok.Getter;
 import lombok.Setter;
+
+import org.springframework.boot.configurationsample.ConfigurationProperties;
 
 /**
  * Configuration properties using lombok @Getter/@Setter at class level.
@@ -32,6 +32,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @ConfigurationProperties(prefix = "simple")
+@SuppressWarnings("unused")
 public class LombokSimpleProperties {
 
 	private final String id = "super-id";
@@ -48,7 +49,7 @@ public class LombokSimpleProperties {
 	@Deprecated
 	private Integer number = 0;
 
-	private final List<String> items = new ArrayList<String>();
+	private final List<String> items = new ArrayList<>();
 
 	private final String ignored = "foo";
 

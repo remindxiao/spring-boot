@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2013 the original author or authors.
+ * Copyright 2012-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,14 +20,14 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.pattern.CompositeConverter;
+
 import org.springframework.boot.ansi.AnsiColor;
 import org.springframework.boot.ansi.AnsiElement;
 import org.springframework.boot.ansi.AnsiOutput;
 import org.springframework.boot.ansi.AnsiStyle;
-
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.pattern.CompositeConverter;
 
 /**
  * Logback {@link CompositeConverter} colors output using the {@link AnsiOutput} class. A
@@ -39,8 +39,9 @@ import ch.qos.logback.core.pattern.CompositeConverter;
 public class ColorConverter extends CompositeConverter<ILoggingEvent> {
 
 	private static final Map<String, AnsiElement> ELEMENTS;
+
 	static {
-		Map<String, AnsiElement> elements = new HashMap<String, AnsiElement>();
+		Map<String, AnsiElement> elements = new HashMap<>();
 		elements.put("faint", AnsiStyle.FAINT);
 		elements.put("red", AnsiColor.RED);
 		elements.put("green", AnsiColor.GREEN);
@@ -52,8 +53,9 @@ public class ColorConverter extends CompositeConverter<ILoggingEvent> {
 	}
 
 	private static final Map<Integer, AnsiElement> LEVELS;
+
 	static {
-		Map<Integer, AnsiElement> levels = new HashMap<Integer, AnsiElement>();
+		Map<Integer, AnsiElement> levels = new HashMap<>();
 		levels.put(Level.ERROR_INTEGER, AnsiColor.RED);
 		levels.put(Level.WARN_INTEGER, AnsiColor.YELLOW);
 		LEVELS = Collections.unmodifiableMap(levels);

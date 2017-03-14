@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2015 the original author or authors.
+ * Copyright 2012-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import java.util.Enumeration;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
 import org.springframework.boot.devtools.restart.classloader.ClassLoaderFile.Kind;
 import org.springframework.core.SmartClassLoader;
 import org.springframework.util.Assert;
@@ -97,7 +98,7 @@ public class RestartClassLoader extends URLClassLoader implements SmartClassLoad
 				resources.nextElement();
 			}
 			if (file.getKind() != Kind.DELETED) {
-				return new CompoundEnumeration<URL>(createFileUrl(name, file), resources);
+				return new CompoundEnumeration<>(createFileUrl(name, file), resources);
 			}
 		}
 		return resources;
@@ -134,7 +135,8 @@ public class RestartClassLoader extends URLClassLoader implements SmartClassLoad
 	}
 
 	@Override
-	public Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+	public Class<?> loadClass(String name, boolean resolve)
+			throws ClassNotFoundException {
 		String path = name.replace('.', '/').concat(".class");
 		ClassLoaderFile file = this.updatedFiles.getFile(path);
 		if (file != null && file.getKind() == Kind.DELETED) {

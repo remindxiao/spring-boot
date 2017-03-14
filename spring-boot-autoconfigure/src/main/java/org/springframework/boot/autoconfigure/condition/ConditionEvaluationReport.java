@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2015 the original author or authors.
+ * Copyright 2012-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,7 +51,7 @@ public final class ConditionEvaluationReport {
 
 	private static final AncestorsMatchedCondition ANCESTOR_CONDITION = new AncestorsMatchedCondition();
 
-	private final SortedMap<String, ConditionAndOutcomes> outcomes = new TreeMap<String, ConditionAndOutcomes>();
+	private final SortedMap<String, ConditionAndOutcomes> outcomes = new TreeMap<>();
 
 	private boolean addedAncestorOutcomes;
 
@@ -59,7 +59,7 @@ public final class ConditionEvaluationReport {
 
 	private List<String> exclusions = Collections.emptyList();
 
-	private Set<String> unconditionalClasses = new HashSet<String>();
+	private Set<String> unconditionalClasses = new HashSet<>();
 
 	/**
 	 * Private constructor.
@@ -88,12 +88,12 @@ public final class ConditionEvaluationReport {
 	}
 
 	/**
-	 * Records the name of the classes that have been excluded from condition evaluation.
+	 * Records the names of the classes that have been excluded from condition evaluation.
 	 * @param exclusions the names of the excluded classes
 	 */
 	public void recordExclusions(Collection<String> exclusions) {
 		Assert.notNull(exclusions, "exclusions must not be null");
-		this.exclusions = new ArrayList<String>(exclusions);
+		this.exclusions = new ArrayList<>(exclusions);
 	}
 
 	/**
@@ -103,7 +103,7 @@ public final class ConditionEvaluationReport {
 	 */
 	public void recordEvaluationCandidates(List<String> evaluationCandidates) {
 		Assert.notNull(evaluationCandidates, "evaluationCandidates must not be null");
-		this.unconditionalClasses = new HashSet<String>(evaluationCandidates);
+		this.unconditionalClasses = new HashSet<>(evaluationCandidates);
 	}
 
 	/**
@@ -112,7 +112,8 @@ public final class ConditionEvaluationReport {
 	 */
 	public Map<String, ConditionAndOutcomes> getConditionAndOutcomesBySource() {
 		if (!this.addedAncestorOutcomes) {
-			for (Map.Entry<String, ConditionAndOutcomes> entry : this.outcomes.entrySet()) {
+			for (Map.Entry<String, ConditionAndOutcomes> entry : this.outcomes
+					.entrySet()) {
 				if (!entry.getValue().isFullMatch()) {
 					addNoMatchOutcomeToAncestors(entry.getKey());
 				}
@@ -126,15 +127,15 @@ public final class ConditionEvaluationReport {
 		String prefix = source + "$";
 		for (Entry<String, ConditionAndOutcomes> entry : this.outcomes.entrySet()) {
 			if (entry.getKey().startsWith(prefix)) {
-				ConditionOutcome outcome = new ConditionOutcome(false, "Ancestor '"
-						+ source + "' did not match");
+				ConditionOutcome outcome = ConditionOutcome.noMatch(ConditionMessage
+						.forCondition("Ancestor " + source).because("did not match"));
 				entry.getValue().add(ANCESTOR_CONDITION, outcome);
 			}
 		}
 	}
 
 	/**
-	 * Returns the name of the classes that have been excluded from condition evaluation.
+	 * Returns the names of the classes that have been excluded from condition evaluation.
 	 * @return the names of the excluded classes
 	 */
 	public List<String> getExclusions() {
@@ -142,7 +143,7 @@ public final class ConditionEvaluationReport {
 	}
 
 	/**
-	 * Returns the name of the classes that were evaluated but were not conditional.
+	 * Returns the names of the classes that were evaluated but were not conditional.
 	 * @return the names of the unconditional classes
 	 */
 	public Set<String> getUnconditionalClasses() {
@@ -192,7 +193,7 @@ public final class ConditionEvaluationReport {
 	 */
 	public static class ConditionAndOutcomes implements Iterable<ConditionAndOutcome> {
 
-		private final Set<ConditionAndOutcome> outcomes = new LinkedHashSet<ConditionAndOutcome>();
+		private final Set<ConditionAndOutcome> outcomes = new LinkedHashSet<>();
 
 		public void add(Condition condition, ConditionOutcome outcome) {
 			this.outcomes.add(new ConditionAndOutcome(condition, outcome));
@@ -250,8 +251,8 @@ public final class ConditionEvaluationReport {
 			}
 			ConditionAndOutcome other = (ConditionAndOutcome) obj;
 			return (ObjectUtils.nullSafeEquals(this.condition.getClass(),
-					other.condition.getClass()) && ObjectUtils.nullSafeEquals(
-					this.outcome, other.outcome));
+					other.condition.getClass())
+					&& ObjectUtils.nullSafeEquals(this.outcome, other.outcome));
 		}
 
 		@Override
@@ -263,6 +264,7 @@ public final class ConditionEvaluationReport {
 		public String toString() {
 			return this.condition.getClass() + " " + this.outcome;
 		}
+
 	}
 
 	private static class AncestorsMatchedCondition implements Condition {

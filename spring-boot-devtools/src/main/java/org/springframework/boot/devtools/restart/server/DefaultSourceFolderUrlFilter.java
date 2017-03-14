@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2015 the original author or authors.
+ * Copyright 2012-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,9 @@
 package org.springframework.boot.devtools.restart.server;
 
 import java.net.URL;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -37,6 +40,10 @@ public class DefaultSourceFolderUrlFilter implements SourceFolderUrlFilter {
 
 	private static final Pattern VERSION_PATTERN = Pattern
 			.compile("^-\\d+(?:\\.\\d+)*(?:[.-].+)?$");
+
+	private static final Set<String> SKIPPED_PROJECTS = new HashSet<>(Arrays.asList(
+			"spring-boot", "spring-boot-devtools", "spring-boot-autoconfigure",
+			"spring-boot-actuator", "spring-boot-starter"));
 
 	@Override
 	public boolean isMatch(String sourceFolder, URL url) {
@@ -68,7 +75,7 @@ public class DefaultSourceFolderUrlFilter implements SourceFolderUrlFilter {
 	}
 
 	private boolean isFolderMatch(String folder, String jarName) {
-		if (!jarName.startsWith(folder)) {
+		if (!jarName.startsWith(folder) || SKIPPED_PROJECTS.contains(folder)) {
 			return false;
 		}
 		String version = jarName.substring(folder.length());

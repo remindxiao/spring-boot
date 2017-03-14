@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2015 the original author or authors.
+ * Copyright 2012-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ public class CommandRunner implements Iterable<Command> {
 
 	private final String name;
 
-	private final List<Command> commands = new ArrayList<Command>();
+	private final List<Command> commands = new ArrayList<>();
 
 	private Class<?>[] optionCommandClasses = {};
 
@@ -148,8 +148,8 @@ public class CommandRunner implements Iterable<Command> {
 	public Command findCommand(String name) {
 		for (Command candidate : this.commands) {
 			String candidateName = candidate.getName();
-			if (candidateName.equals(name)
-					|| (isOptionCommand(candidate) && ("--" + candidateName).equals(name))) {
+			if (candidateName.equals(name) || (isOptionCommand(candidate)
+					&& ("--" + candidateName).equals(name))) {
 				return candidate;
 			}
 		}
@@ -185,7 +185,7 @@ public class CommandRunner implements Iterable<Command> {
 	}
 
 	private String[] removeDebugFlags(String[] args) {
-		List<String> rtn = new ArrayList<String>(args.length);
+		List<String> rtn = new ArrayList<>(args.length);
 		boolean appArgsDetected = false;
 		for (String arg : args) {
 			// Allow apps to have a -d argument
@@ -279,14 +279,14 @@ public class CommandRunner implements Iterable<Command> {
 			if (!isOptionCommand(command) && !isHiddenCommand(command)) {
 				String usageHelp = command.getUsageHelp();
 				String description = command.getDescription();
-				Log.info(String.format("\n  %1$s %2$-15s\n    %3$s", command.getName(),
-						(usageHelp == null ? "" : usageHelp), (description == null ? ""
-								: description)));
+				Log.info(String.format("%n  %1$s %2$-15s%n    %3$s", command.getName(),
+						(usageHelp == null ? "" : usageHelp),
+						(description == null ? "" : description)));
 			}
 		}
 		Log.info("");
 		Log.info("Common options:");
-		Log.info(String.format("\n  %1$s %2$-15s\n    %3$s", "-d, --debug",
+		Log.info(String.format("%n  %1$s %2$-15s%n    %3$s", "-d, --debug",
 				"Verbose mode",
 				"Print additional status information for the command you are running"));
 		Log.info("");

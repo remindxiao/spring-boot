@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2015 the original author or authors.
+ * Copyright 2012-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,26 +16,20 @@
 
 package org.springframework.boot.autoconfigure.cache;
 
-import java.io.Closeable;
 import java.io.IOException;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.AutoConfigureAfter;
+import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.spring.cache.HazelcastCacheManager;
+
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnSingleCandidate;
 import org.springframework.boot.autoconfigure.hazelcast.HazelcastAutoConfiguration;
 import org.springframework.boot.autoconfigure.hazelcast.HazelcastConfigResourceCondition;
-import org.springframework.boot.autoconfigure.hazelcast.HazelcastInstanceFactory;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.Resource;
-
-import com.hazelcast.core.Hazelcast;
-import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.spring.cache.HazelcastCacheManager;
 
 /**
  * Hazelcast cache configuration. Can either reuse the {@link HazelcastInstance} that has
@@ -53,82 +47,21 @@ import com.hazelcast.spring.cache.HazelcastCacheManager;
 @ConditionalOnClass({ HazelcastInstance.class, HazelcastCacheManager.class })
 @ConditionalOnMissingBean(CacheManager.class)
 @Conditional(CacheCondition.class)
-@AutoConfigureAfter(HazelcastAutoConfiguration.class)
+@ConditionalOnSingleCandidate(HazelcastInstance.class)
 class HazelcastCacheConfiguration {
 
-	@Configuration
-	@ConditionalOnSingleCandidate(HazelcastInstance.class)
-	static class ExistingHazelcastInstanceConfiguration {
+	private final CacheManagerCustomizers customizers;
 
-		@Autowired
-		private CacheProperties cacheProperties;
-
-		@Bean
-		public HazelcastCacheManager cacheManager(
-				HazelcastInstance existingHazelcastInstance) throws IOException {
-			Resource config = this.cacheProperties.getHazelcast().getConfig();
-			Resource location = this.cacheProperties.resolveConfigLocation(config);
-			if (location != null) {
-				HazelcastInstance cacheHazelcastInstance = new HazelcastInstanceFactory(
-						location).getHazelcastInstance();
-				return new CloseableHazelcastCacheManager(cacheHazelcastInstance);
-			}
-			return new HazelcastCacheManager(existingHazelcastInstance);
-		}
+	HazelcastCacheConfiguration(CacheManagerCustomizers customizers) {
+		this.customizers = customizers;
 	}
 
-	@Configuration
-	@ConditionalOnMissingBean(HazelcastInstance.class)
-	@Conditional(ConfigAvailableCondition.class)
-	static class DefaultHazelcastInstanceConfiguration {
-
-		@Autowired
-		private CacheProperties cacheProperties;
-
-		@Bean
-		public HazelcastInstance hazelcastInstance() throws IOException {
-			Resource config = this.cacheProperties.getHazelcast().getConfig();
-			Resource location = this.cacheProperties.resolveConfigLocation(config);
-			if (location != null) {
-				new HazelcastInstanceFactory(location).getHazelcastInstance();
-			}
-			return Hazelcast.newHazelcastInstance();
-		}
-
-		@Bean
-		public HazelcastCacheManager cacheManager() throws IOException {
-			return new HazelcastCacheManager(hazelcastInstance());
-		}
-
-	}
-
-	/**
-	 * {@link HazelcastConfigResourceCondition} that checks if the
-	 * {@code spring.cache.hazelcast.config} configuration key is defined.
-	 */
-	static class ConfigAvailableCondition extends HazelcastConfigResourceCondition {
-
-		ConfigAvailableCondition() {
-			super("spring.cache.hazelcast", "config");
-		}
-
-	}
-
-	private static class CloseableHazelcastCacheManager extends HazelcastCacheManager
-			implements Closeable {
-
-		private final HazelcastInstance hazelcastInstance;
-
-		CloseableHazelcastCacheManager(HazelcastInstance hazelcastInstance) {
-			super(hazelcastInstance);
-			this.hazelcastInstance = hazelcastInstance;
-		}
-
-		@Override
-		public void close() throws IOException {
-			this.hazelcastInstance.shutdown();
-		}
-
+	@Bean
+	public HazelcastCacheManager cacheManager(HazelcastInstance existingHazelcastInstance)
+			throws IOException {
+		HazelcastCacheManager cacheManager = new HazelcastCacheManager(
+				existingHazelcastInstance);
+		return this.customizers.customize(cacheManager);
 	}
 
 }

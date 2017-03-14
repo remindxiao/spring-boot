@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2014 the original author or authors.
+ * Copyright 2012-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,16 +29,15 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
-import org.springframework.boot.cli.command.OptionParsingCommand;
-import org.springframework.boot.cli.command.status.ExitStatus;
-
-import groovy.lang.Closure;
 import joptsimple.BuiltinHelpFormatter;
 import joptsimple.HelpFormatter;
 import joptsimple.OptionDescriptor;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpecBuilder;
+
+import org.springframework.boot.cli.command.OptionParsingCommand;
+import org.springframework.boot.cli.command.status.ExitStatus;
 
 /**
  * Delegate used by {@link OptionParsingCommand} to parse options and run the command.
@@ -50,8 +49,6 @@ import joptsimple.OptionSpecBuilder;
 public class OptionHandler {
 
 	private OptionParser parser;
-
-	private Closure<?> closure;
 
 	private String help;
 
@@ -76,10 +73,6 @@ public class OptionHandler {
 	protected void options() {
 	}
 
-	public void setClosure(Closure<?> closure) {
-		this.closure = closure;
-	}
-
 	public final ExitStatus run(String... args) throws Exception {
 		String[] argsToUse = args.clone();
 		for (int i = 0; i < argsToUse.length; i++) {
@@ -87,7 +80,7 @@ public class OptionHandler {
 				argsToUse[i] = "--cp";
 			}
 		}
-		OptionSet options = getParser().parse(args);
+		OptionSet options = getParser().parse(argsToUse);
 		return run(options);
 	}
 
@@ -98,18 +91,6 @@ public class OptionHandler {
 	 * @throws Exception in case of errors
 	 */
 	protected ExitStatus run(OptionSet options) throws Exception {
-		if (this.closure != null) {
-			Object result = this.closure.call(options);
-			if (result instanceof ExitStatus) {
-				return (ExitStatus) result;
-			}
-			if (result instanceof Boolean) {
-				return (Boolean) result ? ExitStatus.OK : ExitStatus.ERROR;
-			}
-			if (result instanceof Integer) {
-				return new ExitStatus((Integer) result, "Finished");
-			}
-		}
 		return ExitStatus.OK;
 	}
 
@@ -145,7 +126,7 @@ public class OptionHandler {
 
 	private static class OptionHelpFormatter implements HelpFormatter {
 
-		private final List<OptionHelp> help = new ArrayList<OptionHelp>();
+		private final List<OptionHelp> help = new ArrayList<>();
 
 		@Override
 		public String format(Map<String, ? extends OptionDescriptor> options) {
@@ -157,7 +138,7 @@ public class OptionHandler {
 				}
 			};
 
-			Set<OptionDescriptor> sorted = new TreeSet<OptionDescriptor>(comparator);
+			Set<OptionDescriptor> sorted = new TreeSet<>(comparator);
 			sorted.addAll(options.values());
 
 			for (OptionDescriptor descriptor : sorted) {
@@ -181,7 +162,7 @@ public class OptionHandler {
 		private final String description;
 
 		OptionHelpAdapter(OptionDescriptor descriptor) {
-			this.options = new LinkedHashSet<String>();
+			this.options = new LinkedHashSet<>();
 			for (String option : descriptor.options()) {
 				this.options.add((option.length() == 1 ? "-" : "--") + option);
 			}
@@ -201,5 +182,7 @@ public class OptionHandler {
 		public String getUsageHelp() {
 			return this.description;
 		}
+
 	}
+
 }

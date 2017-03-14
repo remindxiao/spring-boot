@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2014 the original author or authors.
+ * Copyright 2012-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,10 +19,10 @@ package org.springframework.boot.configurationsample.lombok;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.springframework.boot.configurationsample.ConfigurationProperties;
-
 import lombok.Getter;
 import lombok.Setter;
+
+import org.springframework.boot.configurationsample.ConfigurationProperties;
 
 /**
  * Configuration properties using lombok @Getter/@Setter at field level.
@@ -56,7 +56,7 @@ public class LombokExplicitProperties {
 	private Integer number = 0;
 
 	@Getter
-	private final List<String> items = new ArrayList<String>();
+	private final List<String> items = new ArrayList<>();
 
 	// Should be ignored if no annotation is set
 	@SuppressWarnings("unused")

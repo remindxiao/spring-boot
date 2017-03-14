@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2015 the original author or authors.
+ * Copyright 2012-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,11 +25,12 @@ import java.util.List;
 
 import org.junit.After;
 import org.junit.Test;
+
 import org.springframework.boot.actuate.metrics.Metric;
 import org.springframework.boot.actuate.metrics.writer.Delta;
 import org.springframework.util.SocketUtils;
 
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Tests for {@link StatsdMetricWriter}.
@@ -53,52 +54,52 @@ public class StatsdMetricWriterTests {
 
 	@Test
 	public void increment() {
-		this.writer.increment(new Delta<Long>("counter.foo", 3L));
+		this.writer.increment(new Delta<>("counter.foo", 3L));
 		this.server.waitForMessage();
-		assertEquals("me.counter.foo:3|c", this.server.messagesReceived().get(0));
+		assertThat(this.server.messagesReceived().get(0)).isEqualTo("me.counter.foo:3|c");
 	}
 
 	@Test
 	public void setLongMetric() throws Exception {
-		this.writer.set(new Metric<Long>("gauge.foo", 3L));
+		this.writer.set(new Metric<>("gauge.foo", 3L));
 		this.server.waitForMessage();
-		assertEquals("me.gauge.foo:3|g", this.server.messagesReceived().get(0));
+		assertThat(this.server.messagesReceived().get(0)).isEqualTo("me.gauge.foo:3|g");
 	}
 
 	@Test
 	public void setDoubleMetric() throws Exception {
-		this.writer.set(new Metric<Double>("gauge.foo", 3.7));
+		this.writer.set(new Metric<>("gauge.foo", 3.7));
 		this.server.waitForMessage();
 		// Doubles are truncated
-		assertEquals("me.gauge.foo:3|g", this.server.messagesReceived().get(0));
+		assertThat(this.server.messagesReceived().get(0)).isEqualTo("me.gauge.foo:3.7|g");
 	}
 
 	@Test
 	public void setTimerMetric() throws Exception {
-		this.writer.set(new Metric<Long>("timer.foo", 37L));
+		this.writer.set(new Metric<>("timer.foo", 37L));
 		this.server.waitForMessage();
-		assertEquals("me.timer.foo:37|ms", this.server.messagesReceived().get(0));
+		assertThat(this.server.messagesReceived().get(0)).isEqualTo("me.timer.foo:37|ms");
 	}
 
 	@Test
 	public void nullPrefix() throws Exception {
 		this.writer = new StatsdMetricWriter("localhost", this.port);
-		this.writer.set(new Metric<Long>("gauge.foo", 3L));
+		this.writer.set(new Metric<>("gauge.foo", 3L));
 		this.server.waitForMessage();
-		assertEquals("gauge.foo:3|g", this.server.messagesReceived().get(0));
+		assertThat(this.server.messagesReceived().get(0)).isEqualTo("gauge.foo:3|g");
 	}
 
 	@Test
-	public void perioPrefix() throws Exception {
+	public void periodPrefix() throws Exception {
 		this.writer = new StatsdMetricWriter("my.", "localhost", this.port);
-		this.writer.set(new Metric<Long>("gauge.foo", 3L));
+		this.writer.set(new Metric<>("gauge.foo", 3L));
 		this.server.waitForMessage();
-		assertEquals("my.gauge.foo:3|g", this.server.messagesReceived().get(0));
+		assertThat(this.server.messagesReceived().get(0)).isEqualTo("my.gauge.foo:3|g");
 	}
 
-	private static final class DummyStatsDServer {
+	private static final class DummyStatsDServer implements Runnable {
 
-		private final List<String> messagesReceived = new ArrayList<String>();
+		private final List<String> messagesReceived = new ArrayList<>();
 
 		private final DatagramSocket server;
 
@@ -106,28 +107,27 @@ public class StatsdMetricWriterTests {
 			try {
 				this.server = new DatagramSocket(port);
 			}
-			catch (SocketException e) {
-				throw new IllegalStateException(e);
+			catch (SocketException ex) {
+				throw new IllegalStateException(ex);
 			}
-			new Thread(new Runnable() {
-				@Override
-				public void run() {
-					try {
-						final DatagramPacket packet = new DatagramPacket(new byte[256],
-								256);
-						DummyStatsDServer.this.server.receive(packet);
-						DummyStatsDServer.this.messagesReceived.add(new String(packet
-								.getData(), Charset.forName("UTF-8")).trim());
-					}
-					catch (Exception e) {
-						// Ignore
-					}
-				}
-			}).start();
+			new Thread(this).start();
 		}
 
 		public void stop() {
 			this.server.close();
+		}
+
+		@Override
+		public void run() {
+			try {
+				DatagramPacket packet = new DatagramPacket(new byte[256], 256);
+				this.server.receive(packet);
+				this.messagesReceived.add(
+						new String(packet.getData(), Charset.forName("UTF-8")).trim());
+			}
+			catch (Exception ex) {
+				// Ignore
+			}
 		}
 
 		public void waitForMessage() {
@@ -142,7 +142,7 @@ public class StatsdMetricWriterTests {
 		}
 
 		public List<String> messagesReceived() {
-			return new ArrayList<String>(this.messagesReceived);
+			return new ArrayList<>(this.messagesReceived);
 		}
 
 	}

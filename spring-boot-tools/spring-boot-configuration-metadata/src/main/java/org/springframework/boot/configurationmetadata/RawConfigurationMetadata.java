@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2015 the original author or authors.
+ * Copyright 2012-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,10 +34,11 @@ class RawConfigurationMetadata {
 	private final List<ConfigurationMetadataHint> hints;
 
 	RawConfigurationMetadata(List<ConfigurationMetadataSource> sources,
-			List<ConfigurationMetadataItem> items, List<ConfigurationMetadataHint> hints) {
-		this.sources = new ArrayList<ConfigurationMetadataSource>(sources);
-		this.items = new ArrayList<ConfigurationMetadataItem>(items);
-		this.hints = new ArrayList<ConfigurationMetadataHint>(hints);
+			List<ConfigurationMetadataItem> items,
+			List<ConfigurationMetadataHint> hints) {
+		this.sources = new ArrayList<>(sources);
+		this.items = new ArrayList<>(items);
+		this.hints = new ArrayList<>(hints);
 		for (ConfigurationMetadataItem item : this.items) {
 			resolveName(item);
 		}
@@ -77,11 +78,17 @@ class RawConfigurationMetadata {
 		ConfigurationMetadataSource source = getSource(item.getSourceType());
 		if (source != null) {
 			String groupId = source.getGroupId();
+			String dottedPrefix = groupId + ".";
 			String id = item.getId();
-			if (id.startsWith(groupId)) { // match
-				String name = id.substring(groupId.length() + 1, id.length()); // "."
+			if (hasLength(groupId) && id.startsWith(dottedPrefix)) {
+				String name = id.substring(dottedPrefix.length());
 				item.setName(name);
 			}
 		}
 	}
+
+	private static boolean hasLength(String string) {
+		return (string != null && string.length() > 0);
+	}
+
 }

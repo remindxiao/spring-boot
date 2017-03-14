@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2014 the original author or authors.
+ * Copyright 2012-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,10 @@ import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
 
+import jline.console.ConsoleReader;
+import jline.console.completer.CandidateListCompletionHandler;
 import org.fusesource.jansi.AnsiRenderer.Code;
+
 import org.springframework.boot.cli.command.Command;
 import org.springframework.boot.cli.command.CommandFactory;
 import org.springframework.boot.cli.command.CommandRunner;
@@ -34,9 +37,6 @@ import org.springframework.boot.cli.command.core.HelpCommand;
 import org.springframework.boot.cli.command.core.VersionCommand;
 import org.springframework.boot.loader.tools.SignalUtils;
 import org.springframework.util.StringUtils;
-
-import jline.console.ConsoleReader;
-import jline.console.completer.CandidateListCompletionHandler;
 
 /**
  * A shell for Spring Boot. Drops the user into an event loop (REPL) where command line
@@ -49,8 +49,9 @@ import jline.console.completer.CandidateListCompletionHandler;
 public class Shell {
 
 	private static final Set<Class<?>> NON_FORKED_COMMANDS;
+
 	static {
-		Set<Class<?>> nonForked = new HashSet<Class<?>>();
+		Set<Class<?>> nonForked = new HashSet<>();
 		nonForked.add(VersionCommand.class);
 		NON_FORKED_COMMANDS = Collections.unmodifiableSet(nonForked);
 	}
@@ -85,9 +86,9 @@ public class Shell {
 	}
 
 	private Iterable<Command> getCommands() {
-		List<Command> commands = new ArrayList<Command>();
-		ServiceLoader<CommandFactory> factories = ServiceLoader.load(
-				CommandFactory.class, getClass().getClassLoader());
+		List<Command> commands = new ArrayList<>();
+		ServiceLoader<CommandFactory> factories = ServiceLoader.load(CommandFactory.class,
+				getClass().getClassLoader());
 		for (CommandFactory factory : factories) {
 			for (Command command : factory.getCommands()) {
 				commands.add(convertToForkCommand(command));
@@ -174,13 +175,13 @@ public class Shell {
 	}
 
 	/**
-	 * Final handle an interrup signal (CTRL-C).
+	 * Final handle an interrupt signal (CTRL-C).
 	 */
 	protected void handleSigInt() {
 		if (this.commandRunner.handleSigInt()) {
 			return;
 		}
-		System.out.println("\nThanks for using Spring Boot");
+		System.out.println(String.format("%nThanks for using Spring Boot"));
 		System.exit(1);
 	}
 
@@ -192,7 +193,7 @@ public class Shell {
 
 		private volatile Command lastCommand;
 
-		private final Map<String, String> aliases = new HashMap<String, String>();
+		private final Map<String, String> aliases = new HashMap<>();
 
 		ShellCommandRunner() {
 			super(null);
